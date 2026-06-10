@@ -492,9 +492,17 @@ function load() {
   // prefer URL hash state (shared link) over localStorage
   try {
     if (location.hash && location.hash.length > 1) {
-      const checked = atob(location.hash.slice(1)).split(',').filter(Boolean);
-      state = {};
-      checked.forEach(k => { state[k] = true; });
+      const decoded = atob(location.hash.slice(1));
+      if (decoded.startsWith('{')) {
+        // old JSON format — migrate to new format
+        const parsed = JSON.parse(decoded);
+        state = {};
+        Object.keys(parsed).forEach(k => { if (parsed[k]) state[k] = true; });
+      } else {
+        // new compact format: comma-separated checked keys
+        state = {};
+        decoded.split(',').filter(k => /^\d+-\d+$/.test(k)).forEach(k => { state[k] = true; });
+      }
       return;
     }
   } catch(e){}
