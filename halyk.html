@@ -506,7 +506,7 @@ const SECTIONS = [
   ]},
 ];
 
-const KEY = 'vibe_b2b_cl_v1';
+const KEY = 'vibe_b2b_cl_v3';
 let state = {};
 let meta = { company: '', date: '' };
 
@@ -626,6 +626,8 @@ function toggleSection(si) {
 
 function render() {
   load();
+  // normalize hash to compact format right after load
+  history.replaceState(null, '', '#' + encodeHash());
   document.getElementById('meta-company').value = meta.company;
   document.getElementById('meta-date').value = meta.date;
   const main = document.getElementById('main');
@@ -675,4 +677,3 @@ render();
 </script>
 </body>
 </html>
- 
