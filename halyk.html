@@ -295,6 +295,31 @@
   .tag-must { background: var(--red-bg); color: var(--red-text); }
   .tag-tip { background: var(--accent-bg); color: var(--accent-text); }
 
+  .meta-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .meta-input {
+    font-family: 'Golos Text', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 0;
+  }
+
+  .meta-input:focus { border-color: var(--accent); }
+  .meta-input::placeholder { color: var(--text3); }
+  .meta-input.company { flex: 1; }
+  .meta-input.date { width: 140px; flex-shrink: 0; }
+
   .footer {
     text-align: center;
     padding: 12px 0 0;
@@ -395,7 +420,11 @@
       </div>
     </div>
   </div>
-  <div class="progress-track">
+  <div class="meta-row">
+    <input class="meta-input company" id="meta-company" placeholder="Название компании" oninput="saveMeta()" />
+    <input class="meta-input date" id="meta-date" placeholder="Дата воркшопа" oninput="saveMeta()" />
+  </div>
+  <div class="progress-track" style="margin-top:12px;">
     <div class="progress-fill" id="prog"></div>
   </div>
 </div>
@@ -479,27 +508,44 @@ const SECTIONS = [
 
 const KEY = 'vibe_b2b_cl_v1';
 let state = {};
+let meta = { company: '', date: '' };
+
+function encodeHash() {
+  const checked = Object.keys(state).filter(k => state[k]);
+  const payload = { k: checked.join(','), c: meta.company, d: meta.date };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+}
 
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
-  // only encode checked keys to keep URL short
-  const checked = Object.keys(state).filter(k => state[k]);
-  const encoded = btoa(checked.join(','));
-  history.replaceState(null, '', '#' + encoded);
+  history.replaceState(null, '', '#' + encodeHash());
+}
+
+function saveMeta() {
+  meta.company = document.getElementById('meta-company').value;
+  meta.date = document.getElementById('meta-date').value;
+  history.replaceState(null, '', '#' + encodeHash());
 }
 
 function load() {
-  // prefer URL hash state (shared link) over localStorage
   try {
     if (location.hash && location.hash.length > 1) {
-      const decoded = atob(location.hash.slice(1));
+      const decoded = decodeURIComponent(escape(atob(location.hash.slice(1))));
       if (decoded.startsWith('{')) {
-        // old JSON format — migrate to new format
         const parsed = JSON.parse(decoded);
-        state = {};
-        Object.keys(parsed).forEach(k => { if (parsed[k]) state[k] = true; });
+        if (parsed.k !== undefined) {
+          // new format with meta
+          state = {};
+          parsed.k.split(',').filter(k => /^\d+-\d+$/.test(k)).forEach(k => { state[k] = true; });
+          meta.company = parsed.c || '';
+          meta.date = parsed.d || '';
+        } else {
+          // old JSON format — migrate
+          state = {};
+          Object.keys(parsed).forEach(k => { if (parsed[k]) state[k] = true; });
+        }
       } else {
-        // new compact format: comma-separated checked keys
+        // old compact format
         state = {};
         decoded.split(',').filter(k => /^\d+-\d+$/.test(k)).forEach(k => { state[k] = true; });
       }
@@ -580,6 +626,8 @@ function toggleSection(si) {
 
 function render() {
   load();
+  document.getElementById('meta-company').value = meta.company;
+  document.getElementById('meta-date').value = meta.date;
   const main = document.getElementById('main');
   SECTIONS.forEach((s, si) => {
     const sec = document.createElement('div');
