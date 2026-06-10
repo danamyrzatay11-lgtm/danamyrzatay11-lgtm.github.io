@@ -482,8 +482,9 @@ let state = {};
 
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
-  // sync to URL hash so shared links reflect current state
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+  // only encode checked keys to keep URL short
+  const checked = Object.keys(state).filter(k => state[k]);
+  const encoded = btoa(checked.join(','));
   history.replaceState(null, '', '#' + encoded);
 }
 
@@ -491,8 +492,9 @@ function load() {
   // prefer URL hash state (shared link) over localStorage
   try {
     if (location.hash && location.hash.length > 1) {
-      const decoded = decodeURIComponent(escape(atob(location.hash.slice(1))));
-      state = JSON.parse(decoded);
+      const checked = atob(location.hash.slice(1)).split(',').filter(Boolean);
+      state = {};
+      checked.forEach(k => { state[k] = true; });
       return;
     }
   } catch(e){}
